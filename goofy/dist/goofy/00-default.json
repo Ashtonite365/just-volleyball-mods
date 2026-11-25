@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "Goofy library for just volleyball (build 26827091). Full tier only: off in public lobbies / Quick Match.",
+    "EVERYTHING HERE IS OFF BY DEFAULT (1.0 / 0 / false = the game's own ball, players and rules).",
+    "big_ball: ball size multiplier, e.g. 1.5 (real hitbox via BallPhysics.radius; the visual follows the hitbox, never double-scaled).",
+    "ball_physics: edits the game's shared res://game/ball/ball_physics.tres. gravity_scale / bounce_scale are",
+    "  multipliers (1.0 = off); any BallPhysics property can also be set by name, e.g. \"floor_friction\": 0.5.",
+    "player_scale: size of every player (1.0 = off).",
+    "max_hits_per_team: 0 = game rule (3), or 1-10. no_double_hit: one player may touch twice in a row.",
+    "  Both are also rows in the custom-lobby Modifiers panel; the host's values apply (host-enforced).",
+    "time_scale (slow-mo, e.g. 0.6) is opt-in: add it yourself.",
+    "ball_params: the full ball library (156 params: physics, drag, speed caps, bounce, spin/curve, hitboxes, hit range, visuals),",
+    "  keyed by id, e.g. {\"ball.floor_bounce\": 0.8, \"flight.air_drag\": 0.3, \"player.reach\": {\"mul\": 1.5}}. Empty = off.",
+    "  Live offline (Free Play / practice / offline solo / menu) and in LAN / private / friends lobbies; list + ranges in docs/GOOFY-BALL.md.",
+    "In a LAN / private / friends MATCH every gameplay setting (ball + player params, time_scale) follows the HOST; visual-only params (trail, outline, colours) stay yours. Public: local only, stock physics.",
+    "Settings tab and the Mods panel: big_ball, player_scale, ball_physics gravity/bounce, flight.air_drag, flight.curve_scale, time_scale and the rules are gameplay settings now (Settings > mods, docs/GAMEPLAY-SETTINGS.md). Ported fields apply live from either UI; values here are imported once and later file edits of those keys still apply. Overrides still need Save.",
+    "overrides: generic property overrides, e.g. {\"target\":{\"script_class\":\"Ball\"},\"set\":{\"visible\":true}}"
+  ],
+  "big_ball": 1.0,
+  "ball_physics": { "gravity_scale": 1.0, "bounce_scale": 1.0 },
+  "ball_params": {},
+  "player_scale": 1.0,
+  "max_hits_per_team": 0,
+  "no_double_hit": false,
+  "overrides": []
+}

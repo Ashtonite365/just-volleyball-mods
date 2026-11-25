@@ -20,7 +20,9 @@ If a released file is later replaced by a fix, the old file is moved into that m
 
 ## Status
 
-No mods have been published yet.
+| mod | version | path |
+|-----|---------|------|
+| Goofy | 1.2.0 | `goofy/` |
 
 ## Install basics (once mods are published)
 
