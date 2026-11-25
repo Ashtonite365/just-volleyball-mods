@@ -23,6 +23,7 @@ If a released file is later replaced by a fix, the old file is moved into that m
 | mod | version | path |
 |-----|---------|------|
 | Goofy | 1.2.0 | `goofy/` |
+| Shots | 82d3f24 | `shots/` |
 
 ## Install basics (once mods are published)
 

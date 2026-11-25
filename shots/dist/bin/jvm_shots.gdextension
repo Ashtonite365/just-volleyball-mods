@@ -1,0 +1,10 @@
+[configuration]
+entry_symbol = "jvm_shots_init"
+compatibility_minimum = "4.5"
+reloadable = false
+
+[libraries]
+windows.release.x86_64 = "res://mods/bin/libjvm_shots.windows.template_release.x86_64.dll"
+windows.debug.x86_64 = "res://mods/bin/libjvm_shots.windows.template_release.x86_64.dll"
+linux.release.x86_64 = "res://mods/bin/libjvm_shots.linux.template_debug.x86_64.so"
+linux.debug.x86_64 = "res://mods/bin/libjvm_shots.linux.template_debug.x86_64.so"
