@@ -1,6 +1,6 @@
 # just-volleyball-mods
 
-Unofficial fan-made gameplay and quality-of-life mods for Just Volleyball, kept separate from the core loader and from textures or models.
+Unofficial fan-made mods for Just Volleyball, kept separate from the core library and from the textures and models assets repository.
 
 **This is an unofficial fan project.** It is not affiliated with, endorsed by, or supported by the developers of Just Volleyball. Original work only. Never add official game files (the executable, `.pck`, or extracted game assets) here.
 
@@ -22,6 +22,7 @@ If a released file is later replaced by a fix, the old file is moved into that m
 
 | mod | version | path |
 |-----|---------|------|
+| Loader | 1.0.0 | `loader/` |
 | Goofy | 1.2.0 | `goofy/` |
 | Shots | cc1ef08 | `shots/` |
 
@@ -34,5 +35,5 @@ If a released file is later replaced by a fix, the old file is moved into that m
 
 Related repositories:
 
-- Core / loader: https://github.com/Ashtonite365/just-volleyball-core
+- Core: https://github.com/Ashtonite365/just-volleyball-core
 - Textures and models: https://github.com/Ashtonite365/just-volleyball-assets

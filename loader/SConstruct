@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+import os
+env = SConscript("thirdparty/godot-cpp/SConstruct")
+env.Append(CPPPATH=["src"])
+if env["platform"] == "windows" and env.get("use_mingw"):
+    env.Append(LINKFLAGS=["-static", "-static-libgcc", "-static-libstdc++"])
+if env["platform"] == "linux":
+    env.Append(LINKFLAGS=["-Wl,--no-undefined"])
+
+common = [
+    "src/gate/model_rules.cpp",
+    "src/gate/safe_content.cpp",
+    "src/gate/content_share.cpp",
+    "src/gate/skin_sync.cpp",
+    "src/common/jvm_common.cpp",
+    "src/common/jv_prof.cpp",
+]
+srcs = list(Glob("src/textures/*.cpp")) + list(Glob("src/models/*.cpp")) + list(Glob("src/loader/*.cpp"))
+objs = [
+    env.SharedObject(
+        "build/%s/jvm_loader/%s" % (env["platform"], os.path.basename(str(s)).replace(".cpp", "")),
+        s,
+    )
+    for s in srcs + common
+]
+lib = env.SharedLibrary(
+    "bin/{}/{}{}{}".format(env["platform"], "jvm_loader", env["suffix"], env["SHLIBSUFFIX"]),
+    objs,
+)
+Default(lib)

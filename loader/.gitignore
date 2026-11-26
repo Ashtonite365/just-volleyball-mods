@@ -1,0 +1,11 @@
+*.o
+*.os
+*.obj
+.sconsign.dblite
+build/
+/bin/
+__pycache__/
+*.pyc
+thirdparty/
+out/
+tests/
