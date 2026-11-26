@@ -19,7 +19,7 @@
     "       Indicator (spin shots only, Ball.curve != 0: Curveball, topspin-with-curve, any spin input).",
     "       Default spin_display=question: every client draws the same float uncertainty box from the",
     "       crosshair to the max landing, with a faint '?' near the true landing (FLOAT_MARK_* fade, small wobble).",
-    "       spin_display=exact is the same shared box without the '?'. There is no hitter-only path.",
+    "       spin_display=exact is the same shared box without the float-serve down-arrow. There is no hitter-only path.",
     "       curve_display_remote (grey|full|off, default grey): off hides the shared box on every client;",
     "       grey and full both use the same float-box colour so everyone sees the identical indicator.",
     "       Plain shots and float serves are left alone. Visual only. curveball.range_box: false = exact marker in exact mode.",

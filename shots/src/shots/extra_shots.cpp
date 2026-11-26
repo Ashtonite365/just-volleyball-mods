@@ -2,6 +2,7 @@
 #include "../common/jv_prof.hpp"
 #include <godot_cpp/classes/engine.hpp>
 #include <cmath>
+#include <algorithm>
 
 #include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
@@ -17,6 +18,9 @@
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/shader.hpp>
+#include <godot_cpp/classes/shader_material.hpp>
+#include <godot_cpp/classes/quad_mesh.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/script.hpp>
 #include <godot_cpp/classes/viewport.hpp>
@@ -1034,8 +1038,21 @@ Dictionary JVExtraShots::get_spin_display() const {
 	d["box_start"] = spin_disp_.box_start; d["box_end"] = spin_disp_.box_end; d["box_half_w"] = spin_disp_.box_half_w;
 	d["points"] = spin_disp_.path_points; d["seen"] = spin_disp_.seen; d["stopped"] = spin_disp_.why;
 	d["curve_display_remote"] = curve_display_remote_; d["spin_display"] = spin_display_;
-	d["question_visible"] = question_mi_ && question_mi_->is_visible();
+	d["question_visible"] = false;
 	d["path_visible"] = path_mi_ && path_mi_->is_visible();
+	d["arrow"] = false;
+	d["box_scale"] = Vector3(1, 1, 1);
+	d["box_axis_z"] = spin_disp_.box_end - spin_disp_.box_start;
+	if (spin_disp_.on) {
+		if (Node *b = Object::cast_to<Node>(ObjectDB::get_instance(spin_disp_.ball))) {
+			if (MeshInstance3D *lp = Object::cast_to<MeshInstance3D>(IO().get("ball.landing_marker", b, "_land_predict").operator Object *())) {
+				d["box_scale"] = lp->get_global_transform().basis.get_scale();
+				d["box_axis_z"] = lp->get_global_transform().basis.get_column(2);
+				if (MeshInstance3D *ar = Object::cast_to<MeshInstance3D>(IO().get("ball.landing_marker", b, "_land_arrow").operator Object *()))
+					d["arrow"] = ar->is_visible() && spin_disp_.box_on;
+			}
+		}
+	}
 	return d;
 }
 
@@ -1314,6 +1331,144 @@ bool JVExtraShots::resolve_curve_range(Node *ball, const Vector3 &land, Vector3 
 	return (end - start).length() > 0.15;
 }
 
+
+
+
+static void append_rounded_tri(PackedVector3Array &verts, Vector2 a, Vector2 b, Vector2 c) {
+	const double ROUND = 0.36;
+	Vector2 corners[3] = { a, b, c };
+	Vector2 ctr = (a + b + c) / 3.0;
+	Vector2 rim[12];
+	int n = 0;
+	for (int i = 0; i < 3; i++) {
+		Vector2 p = corners[i];
+		Vector2 prev = corners[(i + 2) % 3];
+		Vector2 nxt = corners[(i + 1) % 3];
+		double r = std::min(p.distance_to(prev), p.distance_to(nxt)) * ROUND;
+		Vector2 t_in = p + (prev - p).normalized() * r;
+		Vector2 t_out = p + (nxt - p).normalized() * r;
+		for (int k = 0; k < 4; k++) {
+			double u = double(k) / 3.0, w = 1.0 - u;
+			rim[n++] = w * w * t_in + 2.0 * w * u * p + u * u * t_out;
+		}
+	}
+	for (int i = 0; i < n; i++) {
+		Vector2 p0 = rim[i], p1 = rim[(i + 1) % n];
+		verts.push_back(Vector3(ctr.x, 0, ctr.y));
+		verts.push_back(Vector3(p0.x, 0, p0.y));
+		verts.push_back(Vector3(p1.x, 0, p1.y));
+	}
+}
+
+static void append_native_shard(PackedVector3Array &verts, Vector2 tip, Vector2 dir, double inset) {
+	const double base_out = 0.34, half_b = 0.13;
+	if (dir.length_squared() < 1e-10) return;
+	dir.normalize();
+	Vector2 perp(-dir.y, dir.x);
+	Vector2 c0 = tip;
+	Vector2 c1 = tip + dir * base_out + perp * half_b;
+	Vector2 c2 = tip + dir * base_out - perp * half_b;
+	if (inset > 0.0) {
+		Vector2 ctr = (c0 + c1 + c2) / 3.0;
+		double s = 1.0 - inset;
+		c0 = ctr + (c0 - ctr) * s;
+		c1 = ctr + (c1 - ctr) * s;
+		c2 = ctr + (c2 - ctr) * s;
+	}
+	append_rounded_tri(verts, c0, c1, c2);
+}
+
+static void append_edge_stroke(PackedVector3Array &verts, Vector2 a, Vector2 b, Vector2 outward, double half, double inset) {
+	if ((b - a).length_squared() < 1e-10) return;
+	double w = half * (inset > 0.0 ? (1.0 - inset) : 1.0);
+	Vector2 n = outward.normalized() * w;
+	Vector2 a0 = a, b0 = b, a1 = a + n, b1 = b + n;
+	auto add = [&](Vector2 p) { verts.push_back(Vector3(p.x, 0, p.y)); };
+	add(a0); add(b0); add(b1);
+	add(a0); add(b1); add(a1);
+}
+
+Ref<ArrayMesh> JVExtraShots::make_curve_box_mesh(double half_w, double half_l, double inset) const {
+	Ref<ArrayMesh> mesh;
+	PackedVector3Array verts;
+	const double sx[4] = { 1, -1, -1, 1 };
+	const double sz[4] = { 1, 1, -1, -1 };
+	for (int i = 0; i < 4; i++) {
+		Vector2 tip(sx[i] * half_w, sz[i] * half_l);
+		Vector2 dir = tip.length_squared() > 1e-10 ? tip.normalized() : Vector2(sx[i], sz[i]).normalized();
+		append_native_shard(verts, tip, dir, inset);
+	}
+	const double stroke = 0.055;
+	Vector2 ne(half_w, half_l), nw(-half_w, half_l), sw(-half_w, -half_l), se(half_w, -half_l);
+	append_edge_stroke(verts, ne, se, Vector2(1, 0), stroke, inset);
+	append_edge_stroke(verts, nw, sw, Vector2(-1, 0), stroke, inset);
+	append_edge_stroke(verts, nw, ne, Vector2(0, 1), stroke, inset);
+	append_edge_stroke(verts, sw, se, Vector2(0, -1), stroke, inset);
+	if (verts.is_empty()) return mesh;
+	Array arr;
+	arr.resize(Mesh::ARRAY_MAX);
+	arr[Mesh::ARRAY_VERTEX] = verts;
+	mesh.instantiate();
+	mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
+	return mesh;
+}
+
+void JVExtraShots::place_float_arrow(Node *ball, MeshInstance3D *lp, const Vector3 &land, const Basis &basis, const Vector3 &origin, bool show) {
+	if (!ball || !lp) return;
+	MeshInstance3D *arrow = Object::cast_to<MeshInstance3D>(IO().get("ball.landing_marker", ball, "_land_arrow").operator Object *());
+	if (!arrow) {
+		for (int i = 0; i < lp->get_child_count(); i++) {
+			if (MeshInstance3D *ch = Object::cast_to<MeshInstance3D>(lp->get_child(i))) {
+				if (ch->get_name() == String("_land_arrow") || ch->get_name() == String("JVLandArrow")) {
+					arrow = ch;
+					break;
+				}
+			}
+		}
+	}
+	if (!arrow) {
+		arrow = memnew(MeshInstance3D);
+		arrow->set_name("JVLandArrow");
+		Ref<QuadMesh> quad;
+		quad.instantiate();
+		quad->set_size(Vector2(0.62, 0.9));
+		arrow->set_mesh(quad);
+		arrow->set_cast_shadows_setting(GeometryInstance3D::SHADOW_CASTING_SETTING_OFF);
+		lp->add_child(arrow);
+		ball->set("_land_arrow", arrow);
+	}
+	Ref<Shader> sh = ResourceLoader::get_singleton()->load("res://game/fx/waypoint_arrow.gdshader");
+	ShaderMaterial *existing = nullptr;
+	if (arrow->get_material_override().is_valid())
+		existing = Object::cast_to<ShaderMaterial>(arrow->get_material_override().ptr());
+	if (sh.is_valid() && (!existing || existing->get_shader() != sh)) {
+		Ref<ShaderMaterial> mat;
+		mat.instantiate();
+		mat->set_shader(sh);
+		mat->set_render_priority(3);
+		arrow->set_material_override(mat);
+		ball->set("_land_arrow_mat", mat);
+	}
+	auto K = [&](const char *k, double def) -> double {
+		Ref<Script> sc = ball->get_script();
+		if (sc.is_valid()) {
+			Dictionary m = sc->get_script_constant_map();
+			if (m.has(k)) return double(m[k]);
+		}
+		return def;
+	};
+	const double arrow_h = K("LAND_ARROW_H", 1.15);
+	Vector3 world = Vector3(land.x, origin.y + arrow_h, land.z);
+	Vector3 local = basis.xform_inv(world - origin);
+	arrow->set_position(local);
+	arrow->set_scale(Vector3(1, 1, 1));
+	arrow->set_rotation(Vector3());
+	if (show) arrow->show();
+	else arrow->hide();
+	if (MeshInstance3D *col = Object::cast_to<MeshInstance3D>(IO().get("ball.landing_marker", ball, "_land_column").operator Object *()))
+		col->hide();
+}
+
 void JVExtraShots::drive_remote_uncertainty_box(Node *ball, const Vector3 &start, const Vector3 &end, double fade, const Color &col) {
 	MeshInstance3D *lp = Object::cast_to<MeshInstance3D>(IO().get("ball.landing_marker", ball, "_land_predict").operator Object *());
 	if (!lp) return;
@@ -1322,22 +1477,8 @@ void JVExtraShots::drive_remote_uncertainty_box(Node *ball, const Vector3 &start
 		if (sc.is_valid()) { Dictionary m = sc->get_script_constant_map(); if (m.has(k)) return double(m[k]); }
 		return def;
 	};
-
-
-
-
-
 	const double spread = K("SPREAD_FAR", 1.15);
 	spin_disp_.box_half_w = spread / std::sqrt(2.0);
-	if (ball->has_method("_shard_cluster_mesh")) {
-		lp->set_mesh(IO().call("ball.landing_marker", ball, "_shard_cluster_mesh", 0.22, spread));
-		if (MeshInstance3D *shell = Object::cast_to<MeshInstance3D>(IO().get("ball.landing_marker", ball, "_land_shell").operator Object *()))
-			shell->set_mesh(IO().call("ball.landing_marker", ball, "_shard_cluster_mesh", 0.0, spread));
-	}
-
-
-	for (int i = 0; i < lp->get_child_count(); i++)
-		if (Node3D *n3 = Object::cast_to<Node3D>(lp->get_child(i))) n3->set_visible(i == 0);
 	Vector3 a(start.x, 0, start.z), b(end.x, 0, end.z);
 	Vector3 mid((a.x + b.x) * 0.5, 0.045, (a.z + b.z) * 0.5);
 	Vector3 along = b - a;
@@ -1347,15 +1488,25 @@ void JVExtraShots::drive_remote_uncertainty_box(Node *ball, const Vector3 &start
 	Vector3 across = Vector3(0, 1, 0).cross(along);
 	if (across.length() < 0.01) across = Vector3(1, 0, 0);
 	across.normalize();
+
+
 	Basis basis;
 	basis.set_column(0, across);
 	basis.set_column(1, Vector3(0, 1, 0));
 	basis.set_column(2, along);
 	const double half = spin_disp_.box_half_w > 0.1 ? spin_disp_.box_half_w : (spread / std::sqrt(2.0));
-	Transform3D xf(basis, mid);
-	xf.basis = xf.basis.scaled(Vector3(1.0, 1.0, (len * 0.5) / half));
-	lp->set_global_transform(xf);
+	lp->set_mesh(make_curve_box_mesh(half, len * 0.5, 0.22));
+	if (MeshInstance3D *shell = Object::cast_to<MeshInstance3D>(IO().get("ball.landing_marker", ball, "_land_shell").operator Object *())) {
+		shell->set_mesh(make_curve_box_mesh(half, len * 0.5, 0.0));
+		shell->set_position(Vector3(0.0, -0.007, 0.0));
+		shell->set_scale(Vector3(1, 1, 1));
+		shell->show();
+	}
+	lp->set_global_transform(Transform3D(basis, mid));
 	lp->show();
+	Vector3 land = spin_disp_.exact;
+	if (Vector2(land.x, land.z).length() < 0.05) land = mid;
+	place_float_arrow(ball, lp, land, basis, mid, spin_disp_.question_on);
 	if (StandardMaterial3D *pm = Object::cast_to<StandardMaterial3D>(lp->get_material_override().ptr()))
 		pm->set_albedo(Color(col.r, col.g, col.b, col.a));
 	if (ball->has_method("_land_tint"))
@@ -1496,17 +1647,8 @@ void JVExtraShots::update_spin_display(double delta) {
 		spin_disp_.box_on = false;
 		hide_game_marker(active, true);
 	}
-	if (question) {
-		ensure_display_nodes(active);
-		Color qcol = Color(0.4, 1.0, 1.0, 0.70 * fade);
-		if (question_mat_.is_valid()) question_mat_->set_albedo(qcol);
-		if (question_lbl_) question_lbl_->set_modulate(qcol);
-		if (question_mi_) { question_mi_->set_global_position(spin_disp_.question_pos); question_mi_->show(); }
-		if (question_lbl_) { question_lbl_->set_global_position(spin_disp_.question_pos + Vector3(0, 0.25, 0)); question_lbl_->show(); }
-	} else {
-		if (question_mi_) question_mi_->hide();
-		if (question_lbl_) question_lbl_->hide();
-	}
+	if (question_mi_) question_mi_->hide();
+	if (question_lbl_) question_lbl_->hide();
 }
 
 

@@ -1,0 +1,1 @@
+5a8402b4ac3f18526847e5cb961beefebd5b8d1e21c30af637ab80a1a014477c  libjvm_shots.windows.template_release.x86_64.dll

@@ -71,7 +71,7 @@ WITHOUT forward, the bend only rides another mod shot (topspin = forward, or spr
 |---|---|---|
 | forward | topspin | the game's own **exact** landing marker (ball.gd:546-635 on our launch) |
 | back | Float: the game's float exactly as its jump float serve (charge = inverse_lerp(FEEL.float_shake_from, FEEL.float_power_cap, power), `Ball.float_seed_for`, `Ball.solve_float` to the aim point, `stop_float` + `start_float`) | the game's own **float-serve box** (it sets `float_serve`, ball.gd:601-635), sent to the other machines with the seed ("fs", main.gd:12119) |
-| left / right | Curveball (hold-to-distance) | **spin display** (any shot with `Ball.curve != 0`, including topspin-with-curve). Default `spin_display: "question"`: every client draws the same float uncertainty box from the crosshair to the max landing, with a faint `?` near the true landing (FLOAT_MARK_* fade, small wobble). `spin_display: "exact"` is the same shared box without the `?`. No hitter-only path. `curveball.range_box: false` = the game's exact marker in exact mode. |
+| left / right | Curveball (hold-to-distance) | **spin display** (any shot with `Ball.curve != 0`, including topspin-with-curve). Default `spin_display: "question"`: every client draws the same float uncertainty box from the crosshair to the max landing, with the game's float-serve down-arrow near the true landing (FLOAT_MARK_* fade, small wobble). `spin_display: "exact"` is the same shared box without the arrow. No hitter-only path. `curveball.range_box: false` = the game's exact marker in exact mode. |
 
 The display is visual only and is drawn independently on every machine after the Ball's own
 `_physics_process` (process priority 1000), including when a remote shot's landing marker is
@@ -84,7 +84,7 @@ from the same code path and the same box values (crosshair to farthest possible 
 when aim is known, otherwise already-synced ball vel / curve / predicted landing, then
 frozen for the rest of the flight). There is no hitter-only path and no remote-only
 tint: the game's own float uncertainty box (same corner triangles, styling, wobble and
-`FLOAT_MARK_*` fade) with the `?` anchored near the true predicted landing in
+`FLOAT_MARK_*` fade) with the game's float-serve down-arrow anchored near the true predicted landing in
 `spin_display=question`. `curve_display_remote=off` hides that shared box on every
 client; `grey` and `full` both use the float-box colour so everyone sees the identical
 indicator. The exact landing ring is hidden so it cannot leak the landing. These options
@@ -195,16 +195,15 @@ game's own `Ball.curve`.
   solved together (`shot_math solve_ramp`: secant on A for the bend's share `L*g_k(hold)`, damped Newton
   on the aim) against our copy of `Ball._predict_land_curved` that steps the game's own static
   `Ball.step_flight` (ball.gd:2239) with that schedule, then launched with the game's `Ball.solve_launch`.
-* **Indicator.** Default (`spin_display: "question"`): a ground path sampled from the predicted
-  curved flight, shifted off the true landing, with a faint `?` in place of the exact ring or box.
-  `spin_display: "exact"` is the previous spin bar: the game's own landing marker (`_land_predict` +
-  `_land_shell`, same material) with its mesh made of the game's own float-box shard
-  (`Ball._shard_cluster_mesh`, ball.gd:497, inset 0.22 / 0) repeated along both edges of the path,
-  pointing in, and diagonal corners at both ends, like the float box's four corners; its half-width
-  holds the across spread (>= 0.35 m). Tint, shimmer, fade-out over the flight (FLOAT_MARK_*) and the
-  shake (`Ball.float_offset` with the float seed) are the float box's, run by `update_range_box`
-  (no shimmer or shake on a greyed remote view). The game's own marker mesh is put back when the
-  display ends (next touch, landing, float).
+* **Indicator.** Default (`spin_display: "question"`): every client draws the same thin
+  uncertainty box from the crosshair to the max landing, using the game's float-serve
+  corner shards at native size and aspect (they are not stretched with the box) plus a
+  drawn outline of the box extent, and the game's own waypoint down-arrow
+  (`res://game/fx/waypoint_arrow.gdshader`, same quad as `_land_arrow`) over the true
+  landing. The box is oriented along the shot (local Z = start→end) and sits on the
+  court. `spin_display: "exact"` is the same box without the arrow. Tint, shimmer,
+  fade-out (FLOAT_MARK_*) and a small wobble (`Ball.float_offset`) match the float box.
+  The game's own marker mesh is put back when the display ends (next touch, landing, float).
 * Drawn on every machine that can see the ball's `curve` (the ramp still runs where the shot is
   computed: the authoritative machine). `curveball.range_box: false` = the game's exact marker in
   exact mode. `curve_display_remote=off` hides the shared box on every client; grey and full use the same float-box colour.

@@ -106,6 +106,8 @@ class JVExtraShots : public Node {
 	PackedVector3Array sample_ground_path(Node *ball, Vector3 *out_land) const;
 	Ref<ArrayMesh> make_path_mesh(const PackedVector3Array &pts, const Vector3 &origin) const;
 	Ref<ArrayMesh> make_question_mesh() const;
+	Ref<ArrayMesh> make_curve_box_mesh(double half_w, double half_l, double inset) const;
+	void place_float_arrow(Node *ball, MeshInstance3D *lp, const Vector3 &land, const Basis &basis, const Vector3 &origin, bool show);
 
 	Ref<ArrayMesh> bar_mesh_, bar_shell_;
 	uint64_t bar_ball_ = 0;
