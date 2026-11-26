@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/label3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/shader_material.hpp>
 #include "../common/mod_base.hpp"
 #include "../common/jv_prof.hpp"
 #include "../common/api_client.hpp"
@@ -93,9 +94,17 @@ class JVExtraShots : public Node {
 	MeshInstance3D *question_mi_ = nullptr;
 	Label3D *question_lbl_ = nullptr;
 	Ref<StandardMaterial3D> path_mat_, question_mat_;
+
+	MeshInstance3D *curve_box_mi_ = nullptr;
+	MeshInstance3D *curve_box_shell_ = nullptr;
+	MeshInstance3D *curve_arrow_mi_ = nullptr;
+	Ref<StandardMaterial3D> curve_box_mat_, curve_box_shell_mat_;
+	Ref<ShaderMaterial> curve_arrow_mat_;
 	void update_spin_display(double delta);
 	void clear_spin_display(const String &why = "");
 	void ensure_display_nodes(Node *ball);
+	void drop_curve_box_nodes();
+	void hide_native_landing_marker(Node *ball);
 	void hide_game_marker(Node *ball, bool hide);
 	void restore_remote_box_marker(Node *ball);
 	bool resolve_curve_range(Node *ball, const Vector3 &land, Vector3 &start, Vector3 &end) const;

@@ -196,14 +196,15 @@ game's own `Ball.curve`.
   on the aim) against our copy of `Ball._predict_land_curved` that steps the game's own static
   `Ball.step_flight` (ball.gd:2239) with that schedule, then launched with the game's `Ball.solve_launch`.
 * **Indicator.** Default (`spin_display: "question"`): every client draws the same thin
-  uncertainty box from the crosshair to the max landing, using the game's float-serve
-  corner shards at native size and aspect (they are not stretched with the box) plus a
-  drawn outline of the box extent, and the game's own waypoint down-arrow
-  (`res://game/fx/waypoint_arrow.gdshader`, same quad as `_land_arrow`) over the true
-  landing. The box is oriented along the shot (local Z = start→end) and sits on the
-  court. `spin_display: "exact"` is the same box without the arrow. Tint, shimmer,
-  fade-out (FLOAT_MARK_*) and a small wobble (`Ball.float_offset`) match the float box.
-  The game's own marker mesh is put back when the display ends (next touch, landing, float).
+  uncertainty box from the crosshair to the max landing, using float-serve corner shards
+  at native size and aspect (they are not stretched with the box) and a waypoint down-arrow
+  (`res://game/fx/waypoint_arrow.gdshader`, same quad size as `_land_arrow`) over the true
+  landing. The overlay lives on our own nodes and materials; the game's landing marker,
+  meshes and shader parameters are left alone. The box is oriented along the shot
+  (local Z = start→end) and sits on the court. `spin_display: "exact"` is the same box
+  without the arrow. Tint, shimmer, fade-out (FLOAT_MARK_*) and a small wobble
+  (`Ball.float_offset`) match the float box. Our nodes are freed when the shot ends,
+  the ball lands, the rally resets or the next shot starts.
 * Drawn on every machine that can see the ball's `curve` (the ramp still runs where the shot is
   computed: the authoritative machine). `curveball.range_box: false` = the game's exact marker in
   exact mode. `curve_display_remote=off` hides the shared box on every client; grey and full use the same float-box colour.

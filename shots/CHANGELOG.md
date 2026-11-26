@@ -1,5 +1,10 @@
 # Changelog
 
+## cc1ef08
+
+- Draw the shared curve uncertainty box on its own nodes and materials, leaving the game's landing marker untouched.
+- Free those nodes when the shot ends, the ball lands, the rally resets or the next shot starts.
+
 ## f3e0889
 
 - Orient the shared curve uncertainty box along the shot.
